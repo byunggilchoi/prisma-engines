@@ -29,6 +29,11 @@ impl PostgresFlavour {
 
 #[async_trait::async_trait]
 impl SqlFlavour for PostgresFlavour {
+    async fn acquire_lock(&self, connection: &Connection) -> ConnectorResult<()> {
+        // https://www.postgresql.org/docs/current/explicit-locking.html#ADVISORY-LOCKS
+        Ok(connection.raw_cmd("SELECT pg_advisory_lock(72707369)").await?)
+    }
+
     #[tracing::instrument(skip(database_str))]
     async fn create_database(&self, database_str: &str) -> ConnectorResult<String> {
         let mut url = Url::parse(database_str).map_err(|err| ConnectorError::url_parse_error(err, database_str))?;
