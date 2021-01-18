@@ -1,5 +1,3 @@
-use crate::request_handlers::graphql::{self, GraphQlBody};
-
 use crate::{
     context::PrismaContext,
     dmmf,
@@ -12,6 +10,7 @@ use datamodel::{Configuration, Datamodel};
 use datamodel_connector::ConnectorCapabilities;
 use prisma_models::DatamodelConverter;
 use query_core::{schema::QuerySchemaRef, schema_builder, BuildMode};
+use request_handlers::GraphQlHandler;
 use std::sync::Arc;
 
 pub struct ExecuteRequest {
@@ -134,8 +133,8 @@ impl CliCommand {
         .await?;
         let cx = Arc::new(cx);
 
-        let body: GraphQlBody = serde_json::from_str(&decoded_request)?;
-        let res = graphql::handle(body, cx).await;
+        let handler = GraphQlHandler::new(&*cx.executor, cx.query_schema());
+        let res = handler.handle(serde_json::from_str(&decoded_request)?).await;
         let res = serde_json::to_string(&res).unwrap();
 
         let encoded_response = base64::encode(&res);

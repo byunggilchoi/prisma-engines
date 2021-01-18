@@ -1,8 +1,4 @@
-use crate::{
-    context::PrismaContext,
-    request_handlers::{graphql, GraphQlBody, SingleQuery},
-    PrismaResponse,
-};
+use crate::context::PrismaContext;
 use enumflags2::BitFlags;
 use migration_core::{
     api::{GenericApi, MigrationApi},
@@ -13,6 +9,7 @@ use quaint::{
     connector::ConnectionInfo,
     visitor::{self, Visitor},
 };
+use request_handlers::{GraphQlBody, GraphQlHandler, PrismaResponse, SingleQuery};
 use sql_migration_connector::SqlMigrationConnector;
 use std::sync::Arc;
 use test_setup::*;
@@ -30,7 +27,10 @@ impl QueryEngine {
     pub async fn request(&self, body: impl Into<SingleQuery>) -> serde_json::Value {
         let body = GraphQlBody::Single(body.into());
         let cx = self.context.clone();
-        match graphql::handle(body, cx).await {
+
+        let handler = GraphQlHandler::new(&*cx.executor, cx.query_schema());
+
+        match handler.handle(body).await {
             PrismaResponse::Single(response) => serde_json::to_value(response).unwrap(),
             _ => unreachable!(),
         }

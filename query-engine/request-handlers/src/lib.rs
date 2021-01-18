@@ -1,9 +1,10 @@
-pub mod graphql;
+mod error;
+mod graphql;
 
+pub use error::HandlerError;
 pub use graphql::*;
-pub use query_core::{response_ir, schema::QuerySchemaRenderer};
 
-use std::fmt::Debug;
+pub type Result<T> = std::result::Result<T, HandlerError>;
 
 #[derive(Debug, serde::Serialize, PartialEq)]
 #[serde(untagged)]
