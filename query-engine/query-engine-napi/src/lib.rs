@@ -11,7 +11,7 @@ pub(crate) type Result<T> = std::result::Result<T, error::ApiError>;
 pub(crate) type Executor = Box<dyn QueryExecutor + Send + Sync>;
 
 #[js_function(1)]
-fn engine_constructor(ctx: CallContext) -> napi::Result<JsUndefined> {
+fn constructor(ctx: CallContext) -> napi::Result<JsUndefined> {
     let url = ctx.get::<JsString>(0)?.into_utf8()?;
 
     let mut this: JsObject = ctx.this_unchecked();
@@ -22,7 +22,7 @@ fn engine_constructor(ctx: CallContext) -> napi::Result<JsUndefined> {
 }
 
 #[js_function(1)]
-fn engine_connect(ctx: CallContext) -> napi::Result<JsObject> {
+fn connect(ctx: CallContext) -> napi::Result<JsObject> {
     let this: JsObject = ctx.this_unchecked();
     let engine: &QueryEngine = ctx.env.unwrap(&this)?;
     let engine: QueryEngine = engine.clone();
@@ -37,7 +37,7 @@ fn engine_connect(ctx: CallContext) -> napi::Result<JsObject> {
 }
 
 #[js_function(1)]
-fn engine_query(ctx: CallContext) -> napi::Result<JsObject> {
+fn query(ctx: CallContext) -> napi::Result<JsObject> {
     let this: JsObject = ctx.this_unchecked();
     let engine: &QueryEngine = ctx.env.unwrap(&this)?;
     let engine: QueryEngine = engine.clone();
@@ -51,14 +51,53 @@ fn engine_query(ctx: CallContext) -> napi::Result<JsObject> {
         })
 }
 
+#[js_function(0)]
+fn sdl_schema(ctx: CallContext) -> napi::Result<JsObject> {
+    let this: JsObject = ctx.this_unchecked();
+    let engine: &QueryEngine = ctx.env.unwrap(&this)?;
+    let engine: QueryEngine = engine.clone();
+
+    ctx.env
+        .execute_tokio_future(async move { Ok(engine.sdl_schema().await?) }, |&mut env, schema| {
+            env.create_string(&schema)
+        })
+}
+
+#[js_function(0)]
+fn dmmf(ctx: CallContext) -> napi::Result<JsObject> {
+    let this: JsObject = ctx.this_unchecked();
+    let engine: &QueryEngine = ctx.env.unwrap(&this)?;
+    let engine: QueryEngine = engine.clone();
+
+    ctx.env
+        .execute_tokio_future(async move { Ok(engine.dmmf().await?) }, |&mut env, dmmf| {
+            env.to_js_value(&dmmf)
+        })
+}
+
+#[js_function(0)]
+fn server_info(ctx: CallContext) -> napi::Result<JsObject> {
+    let this: JsObject = ctx.this_unchecked();
+    let engine: &QueryEngine = ctx.env.unwrap(&this)?;
+    let engine: QueryEngine = engine.clone();
+
+    ctx.env.execute_tokio_future(
+        async move { Ok(engine.server_info().await?) },
+        |&mut env, server_info| env.to_js_value(&server_info),
+    )
+}
+
 #[module_exports]
 pub fn init(mut exports: JsObject, env: Env) -> napi::Result<()> {
     let query_engine = env.define_class(
         "QueryEngine",
-        engine_constructor,
+        constructor,
         &[
-            Property::new(&env, "connect")?.with_method(engine_connect),
-            Property::new(&env, "query")?.with_method(engine_query),
+            Property::new(&env, "connect")?.with_method(connect),
+            Property::new(&env, "query")?.with_method(query),
+            Property::new(&env, "sdlSchema")?.with_method(sdl_schema),
+            Property::new(&env, "dmmf")?.with_method(dmmf),
+            Property::new(&env, "serverInfo")?.with_method(server_info),
         ],
     )?;
 

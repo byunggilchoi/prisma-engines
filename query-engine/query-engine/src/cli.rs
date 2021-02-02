@@ -1,6 +1,5 @@
 use crate::{
     context::PrismaContext,
-    dmmf,
     opt::{CliOpt, PrismaOpt, Subcommand},
     PrismaResult,
 };
@@ -10,7 +9,7 @@ use datamodel::{Configuration, Datamodel};
 use datamodel_connector::ConnectorCapabilities;
 use prisma_models::DatamodelConverter;
 use query_core::{schema::QuerySchemaRef, schema_builder, BuildMode};
-use request_handlers::GraphQlHandler;
+use request_handlers::{dmmf, GraphQlHandler};
 use std::sync::Arc;
 
 pub struct ExecuteRequest {

@@ -1,13 +1,12 @@
 #![deny(missing_docs)]
 
 use crate::context::PrismaContext;
-use crate::dmmf;
 use crate::opt::PrismaOpt;
 use crate::PrismaResult;
 
 use elapsed_middleware::ElapsedMiddleware;
 use query_core::schema::QuerySchemaRenderer;
-use request_handlers::{GraphQLSchemaRenderer, GraphQlBody, GraphQlHandler};
+use request_handlers::{dmmf, GraphQLSchemaRenderer, GraphQlBody, GraphQlHandler};
 use serde_json::json;
 use tide::http::{mime, StatusCode};
 use tide::{prelude::*, Body, Request, Response};

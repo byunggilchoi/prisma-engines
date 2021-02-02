@@ -1,9 +1,12 @@
 use crate::error::ApiError;
 use datamodel::{Configuration, Datamodel};
 use prisma_models::DatamodelConverter;
-use query_core::{schema_builder, BuildMode, QueryExecutor, QuerySchema};
-use request_handlers::{GraphQlBody, GraphQlHandler, PrismaResponse};
-use serde::Deserialize;
+use query_core::{schema_builder, BuildMode, QueryExecutor, QuerySchema, QuerySchemaRenderer};
+use request_handlers::{
+    dmmf::{self, DataModelMetaFormat},
+    GraphQLSchemaRenderer, GraphQlBody, GraphQlHandler, PrismaResponse,
+};
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -23,8 +26,17 @@ pub struct EngineBuilder {
 }
 
 pub struct ConnectedEngine {
+    datamodel: Datamodel,
     query_schema: Arc<QuerySchema>,
     executor: crate::Executor,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ServerInfo {
+    commit: String,
+    version: String,
+    primary_connector: String,
 }
 
 impl ConnectedEngine {
@@ -97,6 +109,7 @@ impl QueryEngine {
                 );
 
                 let engine = ConnectedEngine {
+                    datamodel: builder.datamodel.clone(),
                     query_schema: Arc::new(query_schema),
                     executor,
                 };
@@ -116,6 +129,35 @@ impl QueryEngine {
 
                 Ok(handler.handle(query).await)
             }
+            Inner::Builder(_) => Err(ApiError::NotConnected),
+        }
+    }
+
+    pub async fn sdl_schema(&self) -> crate::Result<String> {
+        match *self.inner.read().await {
+            Inner::Connected(ref engine) => Ok(GraphQLSchemaRenderer::render(engine.query_schema().clone())),
+            Inner::Builder(_) => Err(ApiError::NotConnected),
+        }
+    }
+
+    pub async fn dmmf(&self) -> crate::Result<DataModelMetaFormat> {
+        match *self.inner.read().await {
+            Inner::Connected(ref engine) => {
+                let dmmf = dmmf::render_dmmf(&engine.datamodel, engine.query_schema().clone());
+
+                Ok(dmmf)
+            }
+            Inner::Builder(_) => Err(ApiError::NotConnected),
+        }
+    }
+
+    pub async fn server_info(&self) -> crate::Result<ServerInfo> {
+        match *self.inner.read().await {
+            Inner::Connected(ref engine) => Ok(ServerInfo {
+                commit: env!("GIT_HASH").into(),
+                version: env!("CARGO_PKG_VERSION").into(),
+                primary_connector: engine.executor().primary_connector().name().clone(),
+            }),
             Inner::Builder(_) => Err(ApiError::NotConnected),
         }
     }

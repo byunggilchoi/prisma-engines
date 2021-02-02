@@ -14,7 +14,6 @@ use tracing_subscriber::layer::SubscriberExt;
 
 mod cli;
 mod context;
-mod dmmf;
 mod error;
 mod exec_loader;
 mod opt;
